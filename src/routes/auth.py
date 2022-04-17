@@ -86,6 +86,7 @@ def register():
         email=data.get("email"),
         password=data.get("password"),
         modified_at=datetime.datetime.utcnow(),
+        profanity_filter=data.get("profanity_filter")        
     )
 
     user.password = user.generate_hash(user.password)

@@ -3,8 +3,9 @@ import datetime
 from flask import Flask, jsonify
 from models.UserModel import UserModel
 from models.BlackListTokensModel import BlackListTokensModel
+from models.PostModel import PostModel
 from config import app_config
-from models import db, bcrypt  # add this new line
+from models import db, bcrypt
 
 
 def create_app(env_name):
@@ -77,6 +78,28 @@ def fill_tables():
             break
 
     print("CREATED TEST DATA: Users")
+
+    # create test posts
+    post = {
+        "text": "This is a test post",
+        "user_id": 1
+    }
+
+    n = True
+    for _ in range(1,31):
+        try:
+            p = PostModel(
+                text=post["text"],
+                user_id=post["user_id"],
+                contains_profanity=n
+            )
+            p.add()
+            n = not n
+        except Exception as e:
+            print("ERROR: ", e)
+            break
+
+    print("CREATED TEST DATA: Posts")
 
 if __name__ == "__main__":
     app = create_app("development")

@@ -13,6 +13,8 @@ class UserModel(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     modified_at = db.Column(db.DateTime)
 
+    profanity_filter = db.Column(db.Boolean, default=False)
+
     def __repr__(self):
         return f"User<id={self.id}, name={self.fname} {self.lname}, email={self.email}>"
 

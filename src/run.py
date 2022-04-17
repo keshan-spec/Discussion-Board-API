@@ -21,9 +21,11 @@ app.config["CORS_HEADERS"] = "Content-Type"
 # create the api blueprint
 from routes.auth import auth_bp
 from routes.user import user_bp
+from routes.post import post_bp
 
 app.register_blueprint(auth_bp, url_prefix=API_URL)
 app.register_blueprint(user_bp, url_prefix=API_URL)
+app.register_blueprint(post_bp, url_prefix=API_URL)
 
 
 # ROUTES: Error Handles
@@ -35,6 +37,10 @@ def not_found(error):
 @app.errorhandler(500)
 def internal_server(error):
     return jsonify({"ERROR": "Internal server error!"}), 500
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    return jsonify({"ERROR": "Method not allowed!"}), 405
 
 # ROUTE: Index
 @app.route("/")
