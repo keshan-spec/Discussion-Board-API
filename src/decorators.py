@@ -19,6 +19,9 @@ def token_required(f):
         if not token:
             return jsonify({"message": "Token is missing"}), 401
 
+        # drop old blacklisted tokens
+        BlackListTokensModel.delete_old_records()
+
         # if token is blacklisted
         if BlackListTokensModel.is_token_blacklisted(token):
             return jsonify({"message": "Token is blacklisted or invalid"}), 401

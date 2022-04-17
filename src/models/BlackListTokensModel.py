@@ -23,10 +23,15 @@ class BlackListTokensModel(db.Model):
         db.session.add(self)
         db.session.commit()
 
-    def delete(self):
-        db.session.delete(self)
+    def delete_old_records():
+        # # delete the recorrd if date is older than 24 hours
+        # if self.blacklisted_on < datetime.datetime.utcnow() - datetime.timedelta(minutes=30):
+        #     db.session.delete(self)
+        #     db.session.commit()
+        # delete all records older than 24 hours
+        expiry = datetime.datetime.utcnow() - datetime.timedelta(minutes=30)
+        db.session.query(BlackListTokensModel).filter(BlackListTokensModel.blacklisted_on < expiry).delete()
         db.session.commit()
-
 
 class BlackListTokensSchema(Schema):
     id = fields.Integer()
