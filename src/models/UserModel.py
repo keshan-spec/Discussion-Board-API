@@ -58,8 +58,11 @@ class UserModel(db.Model):
 
     def check_hash(self, password):
         try:
-            # print(f"Verifying User Password<{self.password}> with input<{password}>")
-            return (bcrypt.check_password_hash(self.password, password), "ok")
+            valid = bcrypt.check_password_hash(self.password, password)
+            if valid:
+                return True, None
+            else:
+                return False, "Password is incorrect"
         except Exception as e:
             return (False, e)
 
@@ -67,6 +70,7 @@ class UserModel(db.Model):
         for key, item in data.items():
             if key == "password":
                 self.password = self.generate_hash(item)
+                continue
             setattr(self, key, item)
         self.modified_at = datetime.datetime.utcnow()
         db.session.commit()
