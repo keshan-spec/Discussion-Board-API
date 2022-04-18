@@ -1,4 +1,5 @@
 import datetime
+from email.policy import default
 from marshmallow import fields, Schema
 from sqlalchemy import exists, true
 from models.UserModel import UserModel, UserSchema
@@ -43,15 +44,15 @@ class PostModel(db.Model):
             return {
                 "author": author,
                 "upvote_count": UpvoteModel.get_upvote_count(post_id) or 0,
-                "reply_count": ReplyModel.get_reply_count(post_id) or 0,
+                "comment_count": ReplyModel.get_reply_count(post_id) or 0,
             }
 
         # if it is a verbose request, get the replies and upvotes
         # because they are needed for the post to be viewed
         upvotes = UpvoteModel.get_upvotes(post_id)  # get upvotes
-        replies = ReplyModel.get_replies(post_id)  # get replies
+        comments = ReplyModel.get_comments(post_id)  # get replies
 
-        return {"author": author, "upvotes": upvotes, "replies": replies}
+        return {"author": author, "upvotes": upvotes, "comments": comments}
 
     @staticmethod
     def paginate_posts(page, limit):
@@ -110,6 +111,7 @@ class ReplyModel(db.Model):
     text = db.Column(db.String(255), nullable=False)
     created_on = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     contains_profanity = db.Column(db.Boolean, default=False)
+    parent_id = db.Column(db.Integer, nullable=True, default=None)
 
     user_id = db.Column(db.Integer, db.ForeignKey("user_model.id"), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey("post_model.id"), nullable=False)
@@ -118,18 +120,63 @@ class ReplyModel(db.Model):
     post = db.relationship("PostModel")
 
     def __repr__(self):
-        return f"Reply<id={self.id}>"
+        return f"Comment<id={self.id}>"
 
     def add(self):
         db.session.add(self)
         db.session.commit()
 
-    def get_replies(post_id):
-        replies = ReplyModel.query.filter_by(post_id=post_id).all()
+    def get_comments(post_id):
+        # get replies and filter by parent_id
+        comments = ReplyModel.query.filter_by(post_id=post_id).all()
+        root_comments = {}
+
+        for comment in comments:
+            if comment.parent_id is None:
+                root_comments[comment.id] = ReplySchema().dump(comment)
+                root_comments[comment.id]["replies"] = []
+            elif comment.parent_id:
+                if comment.parent_id in root_comments:
+                    root_comments[comment.parent_id]["replies"].append(
+                        ReplySchema().dump(comment)
+                    )
+                else:
+                    print(f"parent_id {comment.parent_id} not found")
+                    ReplyModel.recursive_sub_comment(comment, root_comments)
+
+        return root_comments
+
+    @staticmethod
+    def recursive_sub_comment(comment, comments_dict):
+        for reply in comments_dict:
+            try:
+                sub = comments_dict[reply]["replies"]
+            except TypeError:
+                sub = comments_dict["replies"]
+
+            for sub_comment in sub:
+                if sub_comment.get("replies"):
+                    ReplyModel.recursive_sub_comment(comment, sub_comment)
+                else:
+                    if sub_comment["id"] == comment.parent_id:
+                        if sub_comment.get("replies") is None:
+                            sub_comment["replies"] = []
+                        sub_comment["replies"].append(ReplySchema().dump(comment))
+                        break
+
+    def get_replies(parent_id):
+        replies = ReplyModel.query.filter_by(parent_id=parent_id).all()
         return ReplySchema().dump(replies, many=True)
 
     def get_reply_count(post_id):
         return ReplyModel.query.filter_by(post_id=post_id).count()
+
+    def get_reply(reply_id):
+        reply = ReplyModel.query.filter_by(id=reply_id).first()
+        if not reply:
+            return None
+
+        return reply
 
 
 class PostSchema(Schema):
@@ -145,6 +192,7 @@ class ReplySchema(Schema):
     created_on = fields.DateTime()
     contains_profanity = fields.Boolean()
     user_id = fields.Integer()
+    parent_id = fields.Integer()
 
 
 class UpvoteSchema(Schema):

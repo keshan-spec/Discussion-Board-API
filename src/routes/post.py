@@ -78,9 +78,9 @@ def upvote_post(current_user, post_id):
         return jsonify({"message": "Upvote removed successfully"}), 200
 
 
-@post_bp.route("/post/<int:post_id>/reply", methods=["POST"])
+@post_bp.route("/post/<int:post_id>/comment", methods=["POST"])
 @token_required
-def create_reply(current_user, post_id):
+def create_comment(current_user, post_id):
     data = request.get_json()
     if not data:
         return jsonify({"message": "No input data provided"}), 400
@@ -95,6 +95,33 @@ def create_reply(current_user, post_id):
         post_id=post_id,
     )
     post.add()
+    return jsonify({"message": "Comment posted successfully"}), 201
+
+
+@post_bp.route("/reply/<int:reply_id>", methods=["PUT", "POST"])
+@token_required
+def create_reply(current_user, reply_id):
+    reply = ReplyModel.get_reply(reply_id)
+    if not reply:
+        return jsonify({"message": "Comment not found"}), 404
+
+    # heirarchical reply
+    data = request.get_json()
+    if not data:
+        return jsonify({"message": "No input data provided"}), 400
+    if not data.get("text"):
+        return jsonify({"message": "No input data provided"}), 400
+
+    profanity = contains_profanity(data.get("text"))
+    reply = ReplyModel(
+        text=data.get("text"),
+        user_id=current_user.id,
+        contains_profanity=profanity,
+        post_id=reply.post_id,
+        parent_id=reply_id,
+    )
+
+    reply.add()
     return jsonify({"message": "Reply posted successfully"}), 201
 
 
