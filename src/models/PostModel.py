@@ -18,7 +18,23 @@ class PostModel(db.Model):
 
     @staticmethod
     def get_post(post_id):
-        return PostModel.query.filter_by(id=post_id).first()
+        # get post by id with user info
+        post = PostModel.query.filter_by(id=post_id).first()
+        if not post:
+            return None
+
+        user = UserModel.query.filter_by(id=post.user_id).first()
+        user = PostModel.get_author(user)
+        post = PostSchema().dump(post)
+
+        return {**post, "author":user}
+    
+    # get user info
+    @staticmethod
+    def get_author(user):
+        user = UserSchema().dump(user)
+
+        return {"handle": user.get("handle"), "id": user.get("id")}
 
     @staticmethod
     def paginate_posts(page, limit):
@@ -89,9 +105,7 @@ class Pagination:
     def make_posts(self):
         posts = []
         for item in self.items:
-            author = UserSchema().dump(item.user)
-            author = {"handle":author["handle"],"id":author["id"]}
-
+            author = PostModel.get_author(item.user)
             post = PostSchema().dump(item)
             posts.append({**post, "author":author})
 

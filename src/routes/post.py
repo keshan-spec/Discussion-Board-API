@@ -3,11 +3,22 @@ from flask import Blueprint, jsonify, request, session, abort
 
 # models
 from models.PostModel import PostModel, PostSchema, UpvoteModel, UpvoteSchema, Pagination
+from models.UserModel import UserSchema
 from decorators import token_required
 
 
 # create a blueprint
 post_bp = Blueprint("post_bp", __name__)
+
+# get post by id
+@post_bp.route("/post/<int:id>", methods=["GET"])
+@token_required
+def get_post(_, id):
+    post = PostModel.get_post(id)
+    if not post:
+        return jsonify({"message": "Post not found"}), 404
+
+    return jsonify(post), 200
 
 # Get all user records
 @post_bp.route("/posts", methods=["GET"])
