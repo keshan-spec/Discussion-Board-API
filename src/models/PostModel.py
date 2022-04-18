@@ -4,14 +4,15 @@ from sqlalchemy import exists, true
 from models.UserModel import UserModel, UserSchema
 from . import db
 
+
 class PostModel(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     text = db.Column(db.String(255), nullable=False)
     contains_profanity = db.Column(db.Boolean, default=False)
     created_on = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
-    user_id = db.Column(db.Integer, db.ForeignKey('user_model.id'), nullable=False)
-    user = db.relationship('UserModel')
+    user_id = db.Column(db.Integer, db.ForeignKey("user_model.id"), nullable=False)
+    user = db.relationship("UserModel")
 
     def __repr__(self):
         return f"Post<id={self.id}>"
@@ -24,22 +25,40 @@ class PostModel(db.Model):
             return None
 
         user = UserModel.query.filter_by(id=post.user_id).first()
-        user = PostModel.get_author(user)
-        post = PostSchema().dump(post)
+        meta = PostModel.get_post_meta(user, post_id, True)
 
-        return {**post, "author":user}
-    
+        post = PostSchema().dump(post)
+        return {**post, **meta}
+
     # get user info
     @staticmethod
-    def get_author(user):
+    def get_post_meta(user, post_id, verbose=False):
         user = UserSchema().dump(user)
+        author = {"handle": user.get("handle"), "id": user.get("id")}
 
-        return {"handle": user.get("handle"), "id": user.get("id")}
+        # if getting all posts, there is no need
+        # to get the meta data for the post
+        # counts should be enough, as it saves time and space
+        if not verbose:
+            return {
+                "author": author,
+                "upvote_count": UpvoteModel.get_upvote_count(post_id) or 0,
+                "reply_count": ReplyModel.get_reply_count(post_id) or 0,
+            }
+
+        # if it is a verbose request, get the replies and upvotes
+        # because they are needed for the post to be viewed
+        upvotes = UpvoteModel.get_upvotes(post_id)  # get upvotes
+        replies = ReplyModel.get_replies(post_id)  # get replies
+
+        return {"author": author, "upvotes": upvotes, "replies": replies}
 
     @staticmethod
     def paginate_posts(page, limit):
         # join by user_id to get users and paginate
-        return PostModel.query.join(UserModel, PostModel.user_id == UserModel.id).paginate(page, limit, False)
+        return PostModel.query.join(
+            UserModel, PostModel.user_id == UserModel.id
+        ).paginate(page, limit, False)
 
     @classmethod
     def get_all(cls):
@@ -49,16 +68,24 @@ class PostModel(db.Model):
         db.session.add(self)
         db.session.commit()
 
+
 class UpvoteModel(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
-    liked_by = db.Column(db.Integer, db.ForeignKey('user_model.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('post_model.id'), nullable=False)
+    liked_by = db.Column(db.Integer, db.ForeignKey("user_model.id"), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey("post_model.id"), nullable=False)
 
-    user = db.relationship('UserModel')
-    post = db.relationship('PostModel')
+    user = db.relationship("UserModel")
+    post = db.relationship("PostModel")
 
     def __repr__(self):
         return f"Upvote<id={self.id}>"
+
+    def get_upvote_count(post_id):
+        return UpvoteModel.query.filter_by(post_id=post_id).count()
+
+    def get_upvotes(post_id):
+        upvotes = UpvoteModel.query.filter_by(post_id=post_id).all()
+        return [upvote.liked_by for upvote in upvotes]
 
     def upvote_post(post_id, user_id):
         existing_upvote = UpvoteModel.user_has_upvoted(post_id, user_id)
@@ -67,7 +94,7 @@ class UpvoteModel(db.Model):
         else:
             upvote = UpvoteModel(post_id=post_id, liked_by=user_id)
             db.session.add(upvote)
-    
+
         db.session.commit()
         return existing_upvote
 
@@ -77,12 +104,48 @@ class UpvoteModel(db.Model):
             return upvote
         return False
 
+
+class ReplyModel(db.Model):
+    id = db.Column(db.Integer(), primary_key=True)
+    text = db.Column(db.String(255), nullable=False)
+    created_on = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    contains_profanity = db.Column(db.Boolean, default=False)
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user_model.id"), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey("post_model.id"), nullable=False)
+
+    user = db.relationship("UserModel")
+    post = db.relationship("PostModel")
+
+    def __repr__(self):
+        return f"Reply<id={self.id}>"
+
+    def add(self):
+        db.session.add(self)
+        db.session.commit()
+
+    def get_replies(post_id):
+        replies = ReplyModel.query.filter_by(post_id=post_id).all()
+        return ReplySchema().dump(replies, many=True)
+
+    def get_reply_count(post_id):
+        return ReplyModel.query.filter_by(post_id=post_id).count()
+
+
 class PostSchema(Schema):
     id = fields.Integer()
     text = fields.String()
     created_on = fields.DateTime()
     contains_profanity = fields.Boolean()
-    
+
+
+class ReplySchema(Schema):
+    id = fields.Integer()
+    text = fields.String()
+    created_on = fields.DateTime()
+    contains_profanity = fields.Boolean()
+    user_id = fields.Integer()
+
 
 class UpvoteSchema(Schema):
     id = fields.Integer()
@@ -101,15 +164,16 @@ class Pagination:
         self.items = pagination.items
         self.make_urls(pagination, url)
         self.make_posts()
-        
+
     def make_posts(self):
         posts = []
         for item in self.items:
-            author = PostModel.get_author(item.user)
             post = PostSchema().dump(item)
-            posts.append({**post, "author":author})
+            meta = PostModel.get_post_meta(item.user, post["id"])
+            posts.append({**post, **meta})
 
         self.items = posts
+
     def make_urls(self, pagination, url):
         if self.has_next:
             self.next_page = f"{url}?start={pagination.next_num}&limit={self.limit}"
@@ -120,4 +184,14 @@ class Pagination:
         return getattr(self, key)
 
     def keys(self):
-        return ('limit','page', 'pages', 'total', 'has_prev', 'next_page', 'has_next', 'items','prev_page')
+        return (
+            "limit",
+            "page",
+            "pages",
+            "total",
+            "has_prev",
+            "next_page",
+            "has_next",
+            "items",
+            "prev_page",
+        )
