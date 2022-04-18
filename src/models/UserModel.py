@@ -8,6 +8,7 @@ class UserModel(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     fname = db.Column(db.String(128), nullable=False)
     lname = db.Column(db.String(128), nullable=False)
+    handle = db.Column(db.String(128), nullable=False, unique=True)
     email = db.Column(db.String(128), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
@@ -16,16 +17,11 @@ class UserModel(db.Model):
     profanity_filter = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
-        return f"User<id={self.id}, name={self.fname} {self.lname}, email={self.email}>"
+        return f"User<id={self.id}, handle={self.handle}, email={self.email}>"
 
     @classmethod
     def get_all(cls):
-        results = []
-        for result in cls.query.all():
-            _ = result.__dict__.pop("password")
-            results.append(result.__dict__)
-
-        return results
+        return cls.query.all()
 
     def find(**kwargs):
         """Return filtered AND query results for passed in kwargs.
@@ -82,6 +78,7 @@ class UserSchema(Schema):
     id = fields.Integer()
     fname = fields.String()
     lname = fields.String()
+    handle = fields.String()
     email = fields.Email()
     # password = fields.String()
     created_at = fields.DateTime()

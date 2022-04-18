@@ -14,10 +14,9 @@ post_bp = Blueprint("post_bp", __name__)
 @token_required
 def get_paginated_posts(current_user):
     start = int(request.args.get('start', 1))
-    limit = int(request.args.get('limit', 5))
+    limit = int(request.args.get('limit', 10))
 
     paginated = PostModel.paginate_posts(start, limit)
-
     # censor profanity if user has profanity filter enabled
     if current_user.profanity_filter:
         for post in paginated.items:
@@ -55,38 +54,6 @@ def upvote_post(current_user, post_id):
         return jsonify({"message": "Upvoted successfully"}), 201
     else:
         return jsonify({"message": "Upvote removed successfully"}), 200
-
-
-def get_paginated_list(data: list, url:str, start: int, limit: int) -> dict:
-    # check if page exists
-    count = len(data)
-    if (count < start):
-        abort(404)
-    
-    # make response
-    obj = {}
-    obj['start'] = start
-    obj['limit'] = limit
-    obj['count'] = count
-    
-    # make URLs
-    # make previous url
-    if start == 1:
-        obj['previous'] = ''
-    else:
-        start_copy = max(1, start - limit)
-        limit_copy = start - 1
-        obj['previous'] = f"{url}?start={start_copy}&limit={limit_copy}"
-    # make next url
-    if start + limit > count:
-        obj['next'] = ''
-    else:
-        start_copy = start + limit
-        obj['next'] = f"{url}?start={start_copy}&limit={limit}"
-    
-    # finally extract result according to bounds
-    obj['results'] = data[(start - 1):(start - 1 + limit)]
-    return obj
 
 
 # https://pypi.org/project/profanity-filter/

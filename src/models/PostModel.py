@@ -1,6 +1,7 @@
 import datetime
 from marshmallow import fields, Schema
-
+from sqlalchemy import exists, true
+from models.UserModel import UserModel, UserSchema
 from . import db
 
 class PostModel(db.Model):
@@ -15,12 +16,14 @@ class PostModel(db.Model):
     def __repr__(self):
         return f"Post<id={self.id}>"
 
-    def get_post(self, post_id):
+    @staticmethod
+    def get_post(post_id):
         return PostModel.query.filter_by(id=post_id).first()
 
     @staticmethod
     def paginate_posts(page, limit):
-        return PostModel.query.paginate(page, limit, False)
+        # join by user_id to get users and paginate
+        return PostModel.query.join(UserModel, PostModel.user_id == UserModel.id).paginate(page, limit, False)
 
     @classmethod
     def get_all(cls):
@@ -41,19 +44,18 @@ class UpvoteModel(db.Model):
     def __repr__(self):
         return f"Upvote<id={self.id}>"
 
-    def upvote_post(self, post_id, user_id):
-        upvote = self.user_has_upvoted(post_id, user_id)
-        if upvote:
-            db.session.delete(upvote)
-
+    def upvote_post(post_id, user_id):
+        existing_upvote = UpvoteModel.user_has_upvoted(post_id, user_id)
+        if existing_upvote:
+            db.session.delete(existing_upvote)
         else:
-            upvote = UpvoteModel(post_id=post_id, liked_by=self.liked_by)
+            upvote = UpvoteModel(post_id=post_id, liked_by=user_id)
             db.session.add(upvote)
     
         db.session.commit()
-        return upvote
+        return existing_upvote
 
-    def user_has_upvoted(self, post_id, user_id):
+    def user_has_upvoted(post_id, user_id):
         upvote = UpvoteModel.query.filter_by(post_id=post_id, liked_by=user_id).first()
         if upvote:
             return upvote
@@ -80,9 +82,20 @@ class Pagination:
         self.total = pagination.total
         self.has_prev = pagination.has_prev
         self.has_next = pagination.has_next
-        self.items = PostSchema(many=True).dump(pagination.items)
+        self.items = pagination.items
         self.make_urls(pagination, url)
+        self.make_posts()
+        
+    def make_posts(self):
+        posts = []
+        for item in self.items:
+            author = UserSchema().dump(item.user)
+            author = {"handle":author["handle"],"id":author["id"]}
 
+            post = PostSchema().dump(item)
+            posts.append({**post, "author":author})
+
+        self.items = posts
     def make_urls(self, pagination, url):
         if self.has_next:
             self.next_page = f"{url}?start={pagination.next_num}&limit={self.limit}"

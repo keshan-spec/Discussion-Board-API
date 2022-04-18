@@ -29,37 +29,25 @@ def fill_tables():
             "lname": "Jude",
             "email": "shehan@ysjcs.net",
             "password": "123",
+            "handle": "shehan",
+            "profanity_filter": True,
         },
         {
             "fname": "Keshanth",
             "lname": "Jude",
             "email": "keshan@ysjcs.net",
             "password": "123",
+            "handle": "keshanspec",
+            "profanity_filter": False,
         },
         {
             "fname": "Jathusa",
             "lname": "Thiruchelvam",
             "email": "jathu@ysjcs.net",
             "password": "123",
-        },
-        {
-            "fname": "Sharaf",
-            "lname": "Mohamed",
-            "email": "sharaf@ysjcs.net",
-            "password": "123",
-        },
-        {
-            "fname": "Shavin",
-            "lname": "Supramanium",
-            "email": "shavin@ysjcs.net",
-            "password": "123",
-        },
-        {
-            "fname": "Shopikar",
-            "lname": "Supramanium",
-            "email": "shopi@ysjcs.net",
-            "password": "123",
-        },
+            "handle": "jathusa",
+            "profanity_filter": True,
+        }
     ]
 
     for user in users:
@@ -69,6 +57,8 @@ def fill_tables():
                 lname=user["lname"],
                 email=user["email"],
                 password=user["password"],
+                handle=user["handle"],
+                profanity_filter=user["profanity_filter"],
                 modified_at=datetime.datetime.utcnow(),
             )
             user.password = user.generate_hash(user.password)

@@ -26,7 +26,8 @@ def create_token(id, exp=30):
 def login():
     # creates dictionary of form data
     auth = request.form
-
+    
+    # checks if username and password are in the form data
     if not auth or not auth["email"] or not auth["password"]:
         # returns 401 if any email or / and password is missing
         return (jsonify({"ERROR": "Credentials missing!"}), 401)
@@ -72,6 +73,7 @@ def register():
     """
     data = request.get_json()
     user = UserModel.query.filter_by(email=data.get("email")).first()
+    handle = UserModel.query.filter_by(handle=data.get("username")).first()
 
     if user:
         # returns 500 if user not exist
@@ -79,12 +81,19 @@ def register():
             jsonify({"Integreity Error": f"Email ({user.email}) already exists!"}),
             500,
         )
-
+    if handle:
+        # returns 500 if user not exist
+        return (
+            jsonify({"Integreity Error": f"Username ({handle.handle}) already exists!"}),
+            500,
+        )
+        
     user = UserModel(
         fname=data.get("fname"),
         lname=data.get("lname"),
         email=data.get("email"),
         password=data.get("password"),
+        handle=data.get("username"),
         modified_at=datetime.datetime.utcnow(),
         profanity_filter=data.get("profanity_filter")        
     )
