@@ -1,0 +1,8 @@
+FLASK_ENV=development
+DB_NAME=database
+JWT_SECRET_KEY=happy
+MYSQL_DB=mysql://{username}:@localhost/${DB_NAME}
+PROD_DB=production_db_name
+PROD_DB_PASS=production_db_pass
+PROD_DB_URL=mysql://{username}:${PROD_DB_PASS}@localhost/${PROD_DB}
+API_PORT=5010
