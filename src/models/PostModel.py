@@ -4,6 +4,7 @@ from marshmallow import fields, Schema
 from sqlalchemy import exists, true
 from models.UserModel import UserModel, UserSchema
 from . import db
+from sqlalchemy import desc
 
 
 class PostModel(db.Model):
@@ -57,9 +58,11 @@ class PostModel(db.Model):
     @staticmethod
     def paginate_posts(page, limit):
         # join by user_id to get users and paginate
-        return PostModel.query.join(
-            UserModel, PostModel.user_id == UserModel.id
-        ).paginate(page, limit, False)
+        return (
+            PostModel.query.join(UserModel, PostModel.user_id == UserModel.id)
+            .order_by(desc(PostModel.created_on))
+            .paginate(page, limit, False)
+        )
 
     @classmethod
     def get_all(cls):
