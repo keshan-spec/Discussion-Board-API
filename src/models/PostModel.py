@@ -13,7 +13,15 @@ class PostModel(db.Model):
     contains_profanity = db.Column(db.Boolean, default=False)
     created_on = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("user_model.id"), nullable=False)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey(
+            "user_model.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
     user = db.relationship("UserModel")
 
     def __repr__(self):
@@ -76,7 +84,15 @@ class PostModel(db.Model):
 class UpvoteModel(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     liked_by = db.Column(db.Integer, db.ForeignKey("user_model.id"), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey("post_model.id"), nullable=False)
+    post_id = db.Column(
+        db.Integer,
+        db.ForeignKey(
+            "post_model.id",
+            onupdate="CASCADE",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
 
     user = db.relationship("UserModel")
     post = db.relationship("PostModel")
@@ -116,8 +132,16 @@ class ReplyModel(db.Model):
     contains_profanity = db.Column(db.Boolean, default=False)
     parent_id = db.Column(db.Integer, nullable=True, default=None)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("user_model.id"), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey("post_model.id"), nullable=False)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user_model.id", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+    )
+    post_id = db.Column(
+        db.Integer,
+        db.ForeignKey("post_model.id", ondelete="CASCADE", onupdate="CASCADE"),
+        nullable=False,
+    )
 
     user = db.relationship("UserModel")
     post = db.relationship("PostModel")
