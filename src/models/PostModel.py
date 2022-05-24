@@ -4,14 +4,16 @@ from marshmallow import fields, Schema
 from sqlalchemy import exists, true
 from models.UserModel import UserModel, UserSchema
 from . import db
-from sqlalchemy import desc
+from sqlalchemy import desc, asc
 
 
 class PostModel(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     text = db.Column(db.String(255), nullable=False)
+    title = db.Column(db.String(255), nullable=False)
     contains_profanity = db.Column(db.Boolean, default=False)
     created_on = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    isClosed = db.Column(db.Boolean, default=False)
 
     user_id = db.Column(
         db.Integer,
@@ -28,15 +30,17 @@ class PostModel(db.Model):
         return f"Post<id={self.id}>"
 
     @staticmethod
-    def get_post(post_id):
+    def get_post(post_id, delete=False):
         # get post by id with user info
         post = PostModel.query.filter_by(id=post_id).first()
         if not post:
             return None
 
+        if delete:
+            return post
+
         user = UserModel.query.filter_by(id=post.user_id).first()
         meta = PostModel.get_post_meta(user, post_id, True)
-
         post = PostSchema().dump(post)
         return {**post, **meta}
 
@@ -58,7 +62,8 @@ class PostModel(db.Model):
 
         # if it is a verbose request, get the replies and upvotes
         # because they are needed for the post to be viewed
-        upvotes = UpvoteModel.get_upvotes(post_id)  # get upvotes
+        upvotes = UpvoteModel.get_upvote_count(post_id)  # get upvotes
+        # upvotes = UpvoteModel.get_upvotes(post_id)  # get upvotes
         comments = ReplyModel.get_comments(post_id)  # get replies
 
         return {"author": author, "upvotes": upvotes, "comments": comments}
@@ -68,7 +73,7 @@ class PostModel(db.Model):
         # join by user_id to get users and paginate
         return (
             PostModel.query.join(UserModel, PostModel.user_id == UserModel.id)
-            .order_by(desc(PostModel.created_on))
+            .order_by(PostModel.created_on.asc())
             .paginate(page, limit, False)
         )
 
@@ -78,6 +83,14 @@ class PostModel(db.Model):
 
     def add(self):
         db.session.add(self)
+        db.session.commit()
+
+    def delete(self):
+        db.session.delete(self)
+        db.session.commit()
+
+    def close(self):
+        self.isClosed = True
         db.session.commit()
 
 
@@ -112,11 +125,11 @@ class UpvoteModel(db.Model):
         if existing_upvote:
             db.session.delete(existing_upvote)
         else:
-            upvote = UpvoteModel(post_id=post_id, liked_by=user_id)
-            db.session.add(upvote)
+            existing_upvote = UpvoteModel(post_id=post_id, liked_by=user_id)
+            db.session.add(existing_upvote)
 
         db.session.commit()
-        return existing_upvote
+        return UpvoteModel.get_upvote_count(post_id)
 
     def user_has_upvoted(post_id, user_id):
         upvote = UpvoteModel.query.filter_by(post_id=post_id, liked_by=user_id).first()
@@ -153,6 +166,15 @@ class ReplyModel(db.Model):
         db.session.add(self)
         db.session.commit()
 
+    def delete(self):
+        # update comment to [deleted]
+        self.text = "[deleted]"
+        self.contains_profanity = False
+        db.session.commit()
+
+        # db.session.delete(self)
+        # db.session.commit()
+
     def get_comments(post_id):
         # get replies and filter by parent_id
         comments = ReplyModel.query.filter_by(post_id=post_id).all()
@@ -171,7 +193,10 @@ class ReplyModel(db.Model):
                     print(f"parent_id {comment.parent_id} not found")
                     ReplyModel.recursive_sub_comment(comment, root_comments)
 
-        return root_comments
+        comments = []
+        for comment in root_comments.values():
+            comments.append(comment)
+        return comments
 
     @staticmethod
     def recursive_sub_comment(comment, comments_dict):
@@ -209,8 +234,10 @@ class ReplyModel(db.Model):
 class PostSchema(Schema):
     id = fields.Integer()
     text = fields.String()
+    title = fields.String()
     created_on = fields.DateTime()
     contains_profanity = fields.Boolean()
+    isClosed = fields.Boolean()
 
 
 class ReplySchema(Schema):
@@ -246,7 +273,6 @@ class Pagination:
             post = PostSchema().dump(item)
             meta = PostModel.get_post_meta(item.user, post["id"])
             posts.append({**post, **meta})
-
         self.items = posts
 
     def make_urls(self, pagination, url):
