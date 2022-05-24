@@ -47,7 +47,7 @@ def fill_tables():
             "password": "123",
             "handle": "jathusa",
             "profanity_filter": True,
-        }
+        },
     ]
 
     for user in users:
@@ -71,17 +71,19 @@ def fill_tables():
 
     # create test posts
     post = {
-        "text": "This is a test post",
-        "user_id": 1
+        "title": "This is a test post",
+        "text": "In publishing and graphic design, Lorem ipsum is a placeholder text commonly used to demonstrate the visual form of a document or a typeface without relying on meaningful content. Lorem ipsum may be used as a placeholder before final copy is available.",
+        "user_id": 1,
     }
 
     n = True
-    for _ in range(1,31):
+    for _ in range(1, 20):
         try:
             p = PostModel(
+                title=post["title"],
                 text=post["text"],
                 user_id=post["user_id"],
-                contains_profanity=n
+                contains_profanity=n,
             )
             p.add()
             n = not n
@@ -90,6 +92,7 @@ def fill_tables():
             break
 
     print("CREATED TEST DATA: Posts")
+
 
 if __name__ == "__main__":
     app = create_app("development")
