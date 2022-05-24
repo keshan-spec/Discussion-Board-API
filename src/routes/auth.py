@@ -11,6 +11,7 @@ from decorators import token_required
 # create a blueprint
 auth_bp = Blueprint("auth_bp", __name__)
 
+
 def create_token(id, exp=30):
     return jwt.encode(
         {
@@ -20,13 +21,21 @@ def create_token(id, exp=30):
         os.environ.get("JWT_SECRET_KEY"),
     )
 
+
+# verify token
+@auth_bp.route("/verify", methods=["GET"])
+@token_required
+def verify_token(user):
+    return jsonify({"message": "Token is valid"})
+
+
 # Login user
 @auth_bp.route("/login", methods=["POST"])
-@cross_origin()
+# @cross_origin()
 def login():
     # creates dictionary of form data
-    auth = request.form
-    
+    auth = request.json
+
     # checks if username and password are in the form data
     if not auth or not auth["email"] or not auth["password"]:
         # returns 401 if any email or / and password is missing
@@ -47,16 +56,19 @@ def login():
             token = create_token(user.id)
 
             # set cookie on client
-            res = make_response({"token": token})
-            res.headers["Access-Control-Allow-Origin"] = "*"
-            res.headers["Access-Control-Allow-Credentials"] = True
-            res.set_cookie("token", value=token, httponly=True, domain=".localhost")
-            return res
+            # res = make_response({"token": token})
+            # res.headers["Access-Control-Allow-Origin"] = "http://localhost:3000"
+            # res.headers["Access-Control-Allow-Credentials"] = "true"
+            # res.set_cookie("token", value=token, httponly=True, domain=".localhost")
+            # return res
+            print(token)
+            return (jsonify({"token": token}), status)
 
         # returns 403 if password is wrong
         return jsonify(f"Could not verify - {status}"), 403
     except Exception as e:
         return jsonify(f"Could not verify - {e}"), 403
+
 
 # Register user
 @auth_bp.route("/register", methods=["POST"])
@@ -84,10 +96,12 @@ def register():
     if handle:
         # returns 500 if user not exist
         return (
-            jsonify({"Integreity Error": f"Username ({handle.handle}) already exists!"}),
+            jsonify(
+                {"Integreity Error": f"Username ({handle.handle}) already exists!"}
+            ),
             500,
         )
-        
+
     user = UserModel(
         fname=data.get("fname"),
         lname=data.get("lname"),
@@ -95,7 +109,7 @@ def register():
         password=data.get("password"),
         handle=data.get("username"),
         modified_at=datetime.datetime.utcnow(),
-        profanity_filter=data.get("profanity_filter")        
+        profanity_filter=data.get("profanity_filter"),
     )
 
     user.password = user.generate_hash(user.password)
@@ -104,7 +118,7 @@ def register():
         user.save()
         serializer = UserSchema()
         data = serializer.dump(user)
-        return jsonify({"email":data['email']}), 201
+        return jsonify({"email": data["email"]}), 201
     except SQLAlchemyError as e:
         error = str(e.__dict__["orig"])
         return jsonify({"SQLALCHEMY ERROR": error}), 500
