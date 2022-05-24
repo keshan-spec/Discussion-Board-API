@@ -56,7 +56,7 @@ def session_required(f):
         # check for session token
         if "access-token" in session:
             token = session["access-token"]
-        
+
         # return 401 if token is empty
         if not token:
             return jsonify({"message": "Token is missing"}), 401
@@ -84,4 +84,5 @@ def session_required(f):
 
         # returns the current logged in users contex to the routes
         return f(current_user, *args, **kwargs)
+
     return decorated
