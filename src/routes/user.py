@@ -17,10 +17,13 @@ def get_all_users(_):
     data = serializer.dump(users)
     return jsonify(data), 200
 
+
 """
 Find user by id
 @param id: user id
 """
+
+
 @user_bp.route("/user/<int:id>", methods=["GET"])
 @token_required
 def get_user(_, id):
@@ -33,10 +36,13 @@ def get_user(_, id):
 
     return jsonify(data), 200
 
+
 """
 Find a user by their attributes
 @param_type: json
 """
+
+
 @user_bp.route("/users/find", methods=["GET"])
 @token_required
 def find(_):
@@ -45,7 +51,7 @@ def find(_):
     args = request.get_json()
     if args is None or args == {}:
         return jsonify({"ERROR": "No arguments provided!"}), 400
-        
+
     users = UserModel.find(**args)
     serializer = UserSchema(many=True)
     data = serializer.dump(users)
@@ -53,7 +59,7 @@ def find(_):
 
 
 # Update a user record
-@user_bp.route("/user", methods=["PUT"])
+@user_bp.route("/user/update", methods=["PUT"])
 @token_required
 def update_user(current_user):
     data = request.get_json()
@@ -68,13 +74,18 @@ def update_user(current_user):
 """
 Delete a user record
 @params: id"""
+
+
 @user_bp.route("/user/<int:id>", methods=["DELETE"])
 @token_required
 def delete_user(current_user, id):
     try:
         user = UserModel.get_by_id(id)
+        if current_user.id != user.id:
+            return jsonify({"message": "Unauthorized action"})
+
         user.delete()
-        return jsonify({"message": f"{user} deleted"}), 200
+        return jsonify({"message": f"Your account has been deleted"}), 200
     except SQLAlchemyError as e:
         error = str(e.__dict__["orig"])
         return jsonify({"Error": error}), 500
