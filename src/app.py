@@ -90,7 +90,7 @@ def fill_tables():
 
 
 if __name__ == "__main__":
-    app = create_app("development")
+    app = create_app("production")
     with app.app_context():
         try:
             print("Droping all tables")
