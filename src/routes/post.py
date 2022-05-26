@@ -1,9 +1,16 @@
 from flask import Blueprint, jsonify, request, session
 
 # models
-from models.PostModel import PostModel, ReplyModel, UpvoteModel, Pagination, ReplySchema
-from models.UserModel import UserSchema
+from models.PostModel import (
+    PostModel,
+    ReplyModel,
+    UpvoteModel,
+    Pagination,
+    ReplySchema,
+    PostSchema,
+)
 from decorators import token_required
+from models.UpvoteModel import CommentUpvoteModel
 
 
 # create a blueprint
@@ -28,6 +35,15 @@ def get_post(current_user, id):
                     comment["text"] = censor_profanity(comment["text"])
 
     return jsonify(post), 200
+
+
+# get user posts
+@post_bp.route("/posts/me", methods=["GET"])
+@token_required
+def get_user_posts(current_user):
+    posts = PostModel.get_user_posts(current_user.id)
+    posts = PostSchema().dump(posts, many=True)
+    return jsonify(posts), 200
 
 
 # Get all user records
@@ -113,11 +129,6 @@ def upvote_post(current_user, post_id):
 
     upvoted = UpvoteModel.upvote_post(post_id, current_user.id)
     return jsonify({"message": "Vote posted successfully", "upvotes": upvoted}), 200
-    # else:
-    #     return (
-    #         jsonify({"message": "Upvote removed successfully", "upvotes": upvoted}),
-    #         200,
-    #     )
 
 
 @post_bp.route("/post/<int:post_id>/comment", methods=["POST"])
@@ -193,6 +204,18 @@ def delete_comment(current_user, comment_id):
 
     comment.delete()
     return jsonify({"message": "Comment deleted successfully"}), 200
+
+
+# upvote a comment
+@post_bp.route("/comment/<int:comment_id>/upvote", methods=["PUT"])
+@token_required
+def upvote_comment(current_user, comment_id):
+    post = ReplyModel.get_reply(comment_id)
+    if not post:
+        return jsonify({"message": "Comment not found"}), 404
+
+    upvoted = CommentUpvoteModel.upvote_comment(comment_id, current_user.id)
+    return jsonify({"message": "Vote posted successfully", "upvotes": upvoted}), 200
 
 
 # https://pypi.org/project/profanity-filter/
