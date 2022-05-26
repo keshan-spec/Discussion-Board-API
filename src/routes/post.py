@@ -23,17 +23,6 @@ def get_post(current_user, id):
     post = PostModel.get_post(id)
     if not post:
         return jsonify({"message": "Post not found"}), 404
-
-    if current_user.profanity_filter:
-        if post["contains_profanity"]:
-            post["text"] = censor_profanity(post["text"])
-            post["title"] = censor_profanity(post["title"])
-
-        if post["comments"]:
-            for comment in post["comments"]:
-                if comment["contains_profanity"]:
-                    comment["text"] = censor_profanity(comment["text"])
-
     return jsonify(post), 200
 
 
@@ -54,13 +43,6 @@ def get_paginated_posts(current_user):
     limit = int(request.args.get("limit", 5))
 
     paginated = PostModel.paginate_posts(start, limit)
-    # censor profanity if user has profanity filter enabled
-    if current_user.profanity_filter:
-        for post in paginated.items:
-            if post.contains_profanity:
-                post.text = censor_profanity(post.text)
-                post.title = censor_profanity(post.title)
-
     pagination = Pagination(paginated, "/posts")
     return jsonify(pagination.__dict__), 200
 
@@ -74,16 +56,10 @@ def create_post(current_user):
     if not data.get("text") or not data.get("title"):
         return jsonify({"message": "No input data provided"}), 400
 
-    # censored_text = censor_profanity(data.get("text"))
-    profanity = [
-        contains_profanity(data.get("text")),
-        contains_profanity(data.get("title")),
-    ]
     post = PostModel(
         title=data.get("title"),
         text=data.get("text"),
         user_id=current_user.id,
-        contains_profanity=any(profanity),
     )
 
     post.add()
@@ -147,11 +123,9 @@ def create_comment(current_user, post_id):
     if post["isClosed"]:
         return jsonify({"message": "Post is closed"}), 400
 
-    profanity = contains_profanity(data.get("text"))
     post = ReplyModel(
         text=data.get("text"),
         user_id=current_user.id,
-        contains_profanity=profanity,
         post_id=post_id,
     )
     post.add()
@@ -178,11 +152,9 @@ def create_reply(current_user, reply_id):
     if not data.get("text"):
         return jsonify({"message": "No input data provided"}), 400
 
-    profanity = contains_profanity(data.get("text"))
     reply = ReplyModel(
         text=data.get("text"),
         user_id=current_user.id,
-        contains_profanity=profanity,
         post_id=reply.post_id,
         parent_id=reply_id,
     )
@@ -216,19 +188,3 @@ def upvote_comment(current_user, comment_id):
 
     upvoted = CommentUpvoteModel.upvote_comment(comment_id, current_user.id)
     return jsonify({"message": "Vote posted successfully", "upvotes": upvoted}), 200
-
-
-# https://pypi.org/project/profanity-filter/
-# from profanity_filter import ProfanityFilter
-
-# pf = ProfanityFilter(lang)
-
-
-def censor_profanity(text):
-    # return pf.censor(text)
-    return False
-
-
-def contains_profanity(text):
-    # return pf.is_profane(text)
-    return False

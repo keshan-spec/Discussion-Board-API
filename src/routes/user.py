@@ -8,7 +8,7 @@ from decorators import token_required
 # create a blueprint
 user_bp = Blueprint("user_bp", __name__)
 
-# Get all user recordsx
+# Get all user records
 @user_bp.route("/users", methods=["GET"])
 @token_required
 def get_all_users(_):
@@ -43,7 +43,7 @@ Find a user by their attributes
 """
 
 
-@user_bp.route("/users/find", methods=["GET"])
+@user_bp.route("/users/find", methods=["POST"])
 @token_required
 def find(_):
     """

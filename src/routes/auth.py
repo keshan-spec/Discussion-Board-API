@@ -120,7 +120,6 @@ def register():
         password=data.get("password"),
         handle=data.get("username"),
         modified_at=datetime.datetime.utcnow(),
-        profanity_filter=data.get("profanity_filter"),
     )
 
     user.password = user.generate_hash(user.password)

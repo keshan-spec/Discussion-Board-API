@@ -10,7 +10,6 @@ class PostModel(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     text = db.Column(db.String(255), nullable=False)
     title = db.Column(db.String(255), nullable=False)
-    contains_profanity = db.Column(db.Boolean, default=False)
     created_on = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     isClosed = db.Column(db.Boolean, default=False)
 
@@ -107,7 +106,6 @@ class ReplyModel(db.Model):
     id = db.Column(db.Integer(), primary_key=True)
     text = db.Column(db.String(255), nullable=False)
     created_on = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    contains_profanity = db.Column(db.Boolean, default=False)
     parent_id = db.Column(db.Integer, nullable=True, default=None)
 
     user_id = db.Column(
@@ -212,7 +210,6 @@ class PostSchema(Schema):
     text = fields.String()
     title = fields.String()
     created_on = fields.DateTime()
-    contains_profanity = fields.Boolean()
     isClosed = fields.Boolean()
 
 
@@ -220,7 +217,6 @@ class ReplySchema(Schema):
     id = fields.Integer()
     text = fields.String()
     created_on = fields.DateTime()
-    contains_profanity = fields.Boolean()
     user_id = fields.Integer()
     parent_id = fields.Integer()
 

@@ -30,7 +30,6 @@ def fill_tables():
             "email": "shehan@ysjcs.net",
             "password": "123",
             "handle": "shehan",
-            "profanity_filter": True,
         },
         {
             "fname": "Keshanth",
@@ -38,7 +37,6 @@ def fill_tables():
             "email": "keshan@ysjcs.net",
             "password": "123",
             "handle": "keshanspec",
-            "profanity_filter": False,
         },
         {
             "fname": "Jathusa",
@@ -46,7 +44,6 @@ def fill_tables():
             "email": "jathu@ysjcs.net",
             "password": "123",
             "handle": "jathusa",
-            "profanity_filter": True,
         },
     ]
 
@@ -58,7 +55,6 @@ def fill_tables():
                 email=user["email"],
                 password=user["password"],
                 handle=user["handle"],
-                profanity_filter=user["profanity_filter"],
                 modified_at=datetime.datetime.utcnow(),
             )
             user.password = user.generate_hash(user.password)
@@ -83,7 +79,6 @@ def fill_tables():
                 title=post["title"],
                 text=post["text"],
                 user_id=post["user_id"],
-                contains_profanity=n,
             )
             p.add()
             n = not n

@@ -16,6 +16,10 @@ API_URL = "/api/v1"
 # create app and configure CORS
 app = create_app(env_name)
 # cors = CORS(app, supports_credentials=True)
+"""
+https://stackoverflow.com/questions/25594893/how-to-enable-cors-in-flask
+https://github.com/corydolphin/flask-cors/issues/199
+"""
 cors = CORS(
     app,
     resources={r"/*": {"origins": "http://localhost:3000"}},
