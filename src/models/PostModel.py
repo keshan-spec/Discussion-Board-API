@@ -1,10 +1,9 @@
 import datetime
-from email.policy import default
 from marshmallow import fields, Schema
-from sqlalchemy import exists, true
 from models.UserModel import UserModel, UserSchema
+from models.UpvoteModel import UpvoteModel
+from models.UpvoteModel import CommentUpvoteModel
 from . import db
-from sqlalchemy import desc, asc
 
 
 class PostModel(db.Model):
@@ -77,6 +76,16 @@ class PostModel(db.Model):
             .paginate(page, limit, False)
         )
 
+    # get a users posts
+    @staticmethod
+    def get_user_posts(user_id):
+        posts = (
+            PostModel.query.filter_by(user_id=user_id)
+            .order_by(PostModel.created_on.desc())
+            .all()
+        )
+        return posts
+
     @classmethod
     def get_all(cls):
         return list(cls.query.all())
@@ -92,50 +101,6 @@ class PostModel(db.Model):
     def close(self):
         self.isClosed = True
         db.session.commit()
-
-
-class UpvoteModel(db.Model):
-    id = db.Column(db.Integer(), primary_key=True)
-    liked_by = db.Column(db.Integer, db.ForeignKey("user_model.id"), nullable=False)
-    post_id = db.Column(
-        db.Integer,
-        db.ForeignKey(
-            "post_model.id",
-            onupdate="CASCADE",
-            ondelete="CASCADE",
-        ),
-        nullable=False,
-    )
-
-    user = db.relationship("UserModel")
-    post = db.relationship("PostModel")
-
-    def __repr__(self):
-        return f"Upvote<id={self.id}>"
-
-    def get_upvote_count(post_id):
-        return UpvoteModel.query.filter_by(post_id=post_id).count()
-
-    def get_upvotes(post_id):
-        upvotes = UpvoteModel.query.filter_by(post_id=post_id).all()
-        return [upvote.liked_by for upvote in upvotes]
-
-    def upvote_post(post_id, user_id):
-        existing_upvote = UpvoteModel.user_has_upvoted(post_id, user_id)
-        if existing_upvote:
-            db.session.delete(existing_upvote)
-        else:
-            existing_upvote = UpvoteModel(post_id=post_id, liked_by=user_id)
-            db.session.add(existing_upvote)
-
-        db.session.commit()
-        return UpvoteModel.get_upvote_count(post_id)
-
-    def user_has_upvoted(post_id, user_id):
-        upvote = UpvoteModel.query.filter_by(post_id=post_id, liked_by=user_id).first()
-        if upvote:
-            return upvote
-        return False
 
 
 class ReplyModel(db.Model):
@@ -168,12 +133,12 @@ class ReplyModel(db.Model):
 
     def delete(self):
         # update comment to [deleted]
-        self.text = "[deleted]"
-        self.contains_profanity = False
-        db.session.commit()
-
-        # db.session.delete(self)
+        # self.text = "[deleted]"
+        # self.contains_profanity = False
         # db.session.commit()
+
+        db.session.delete(self)
+        db.session.commit()
 
     def get_comments(post_id):
         # get replies and filter by parent_id
@@ -182,7 +147,11 @@ class ReplyModel(db.Model):
 
         for comment in comments:
             if comment.parent_id is None:
-                root_comments[comment.id] = ReplySchema().dump(comment)
+                likes = CommentUpvoteModel.get_upvotes(comment.id)
+                root_comments[comment.id] = {
+                    **ReplySchema().dump(comment),
+                    **{"likes": likes},
+                }
                 root_comments[comment.id]["replies"] = []
             elif comment.parent_id:
                 if comment.parent_id in root_comments:
@@ -195,7 +164,11 @@ class ReplyModel(db.Model):
 
         comments = []
         for comment in root_comments.values():
+            # likes = CommentUpvoteModel.get_upvotes(comment.get("id"))
+            # print(likes)
+            # comments.append({**comment, **{"likes": likes}})
             comments.append(comment)
+        # print(comments)
         return comments
 
     @staticmethod
@@ -213,6 +186,7 @@ class ReplyModel(db.Model):
                     if sub_comment["id"] == comment.parent_id:
                         if sub_comment.get("replies") is None:
                             sub_comment["replies"] = []
+
                         sub_comment["replies"].append(ReplySchema().dump(comment))
                         break
 
@@ -247,12 +221,6 @@ class ReplySchema(Schema):
     contains_profanity = fields.Boolean()
     user_id = fields.Integer()
     parent_id = fields.Integer()
-
-
-class UpvoteSchema(Schema):
-    id = fields.Integer()
-    liked_by = fields.Integer()
-    post_id = fields.Integer()
 
 
 class Pagination:
