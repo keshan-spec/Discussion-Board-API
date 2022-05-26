@@ -23,10 +23,18 @@ def create_token(id, exp=30):
 
 
 # verify token
-@auth_bp.route("/verify", methods=["GET"])
+@auth_bp.route("/verify", methods=["POST"])
 @token_required
-def verify_token(user):
-    return jsonify({"message": "Token is valid"})
+def verify_password(user):
+    data = request.get_json()
+    if not data or not data.get("password"):
+        return jsonify({"error": "Password not provided"}), 500
+
+    # verify the password
+    if user.check_hash(data.get("password")):
+        return jsonify({"message": "Password is valid"}), 200
+    else:
+        return jsonify({"error": "Password is invalid"}), 403
 
 
 # Login user
@@ -80,25 +88,28 @@ def register():
         :- lname
         :- email
         :- password
+        :- profanity_filter
         :- created_at (default date time)
         :- modified_at (date time)
     """
     data = request.get_json()
+    if not data:
+        return (jsonify({"ERROR": "No data found"}), 400)
+
+    # check if user already exists
     user = UserModel.query.filter_by(email=data.get("email")).first()
     handle = UserModel.query.filter_by(handle=data.get("username")).first()
 
     if user:
-        # returns 500 if user not exist
+        # returns 500 if user exists
         return (
-            jsonify({"Integreity Error": f"Email ({user.email}) already exists!"}),
+            jsonify({"message": f"Email ({user.email}) already exists!"}),
             500,
         )
     if handle:
-        # returns 500 if user not exist
+        # returns 500 if handle is taken
         return (
-            jsonify(
-                {"Integreity Error": f"Username ({handle.handle}) already exists!"}
-            ),
+            jsonify({"message": f"Username ({handle.handle}) already exists!"}),
             500,
         )
 
@@ -118,7 +129,7 @@ def register():
         user.save()
         serializer = UserSchema()
         data = serializer.dump(user)
-        return jsonify({"email": data["email"]}), 201
+        return jsonify({"email": data["email"]}), 200
     except SQLAlchemyError as e:
         error = str(e.__dict__["orig"])
         return jsonify({"SQLALCHEMY ERROR": error}), 500
