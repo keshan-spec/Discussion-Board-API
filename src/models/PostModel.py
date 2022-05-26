@@ -146,8 +146,8 @@ class ReplyModel(db.Model):
         root_comments = {}
 
         for comment in comments:
+            likes = CommentUpvoteModel.get_upvotes(comment.id)
             if comment.parent_id is None:
-                likes = CommentUpvoteModel.get_upvotes(comment.id)
                 root_comments[comment.id] = {
                     **ReplySchema().dump(comment),
                     **{"likes": likes},
@@ -156,7 +156,7 @@ class ReplyModel(db.Model):
             elif comment.parent_id:
                 if comment.parent_id in root_comments:
                     root_comments[comment.parent_id]["replies"].append(
-                        ReplySchema().dump(comment)
+                        {**ReplySchema().dump(comment), **{"likes": likes}}
                     )
                 else:
                     print(f"parent_id {comment.parent_id} not found")
@@ -164,11 +164,7 @@ class ReplyModel(db.Model):
 
         comments = []
         for comment in root_comments.values():
-            # likes = CommentUpvoteModel.get_upvotes(comment.get("id"))
-            # print(likes)
-            # comments.append({**comment, **{"likes": likes}})
             comments.append(comment)
-        # print(comments)
         return comments
 
     @staticmethod
@@ -184,10 +180,16 @@ class ReplyModel(db.Model):
                     ReplyModel.recursive_sub_comment(comment, sub_comment)
                 else:
                     if sub_comment["id"] == comment.parent_id:
+                        print(sub_comment["id"])
+                        likes = CommentUpvoteModel.get_upvotes(sub_comment["id"])
                         if sub_comment.get("replies") is None:
+                            print(sub_comment["id"])
                             sub_comment["replies"] = []
+                            sub_comment["likes"] = likes
 
-                        sub_comment["replies"].append(ReplySchema().dump(comment))
+                        sub_comment["replies"].append(
+                            {**ReplySchema().dump(comment), **{"likes": likes}}
+                        )
                         break
 
     def get_replies(parent_id):
