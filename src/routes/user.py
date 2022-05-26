@@ -91,3 +91,20 @@ def delete_user(current_user, id):
         return jsonify({"Error": error}), 500
     except Exception as e:
         return jsonify({"Error": str(e)}), 500
+
+
+# update password
+@user_bp.route("/user/update/password", methods=["PUT"])
+@token_required
+def update_password(current_user):
+    data = request.get_json()
+    if data is None or data == {}:
+        return jsonify({"ERROR": "No arguments provided!"}), 400
+
+    if not data.get("old_password") or not data.get("new_password"):
+        return jsonify({"ERROR": "No arguments provided!"}), 400
+
+    if current_user.update_password(data.get("old_password"), data.get("new_password")):
+        return jsonify({"UPDATED": "Password updated sucessfully"}), 200
+    else:
+        return jsonify({"ERROR": "Password is incorrect"}), 403
