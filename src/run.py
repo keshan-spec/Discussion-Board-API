@@ -15,8 +15,14 @@ API_URL = "/api/v1"
 
 # create app and configure CORS
 app = create_app(env_name)
-cors = CORS(app, supports_credentials=True)
-app.config["CORS_HEADERS"] = "Content-Type"
+# cors = CORS(app, supports_credentials=True)
+cors = CORS(
+    app,
+    resources={r"/*": {"origins": "http://localhost:3000"}},
+    supports_credentials=True,
+    headers=["Content-Type", "x-access-token"],
+    origins="*",
+)
 
 # create the api blueprint
 from routes.auth import auth_bp
@@ -38,9 +44,11 @@ def not_found(error):
 def internal_server(error):
     return jsonify({"ERROR": "Internal server error!"}), 500
 
+
 @app.errorhandler(405)
 def method_not_allowed(error):
     return jsonify({"ERROR": "Method not allowed!"}), 405
+
 
 # ROUTE: Index
 @app.route("/")
