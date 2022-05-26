@@ -67,12 +67,21 @@ class UserModel(db.Model):
     def update(self, data):
         for key, item in data.items():
             if key == "password":
-                self.password = self.generate_hash(item)
+                # self.password = self.generate_hash(item)
                 continue
             setattr(self, key, item)
         self.modified_at = datetime.datetime.utcnow()
         db.session.commit()
 
+    def update_password(self, old_password, new_password):
+        valid, error = self.check_hash(old_password)
+        if valid:
+            self.password = self.generate_hash(new_password)
+            self.modified_at = datetime.datetime.utcnow()
+            db.session.commit()
+            return True
+        else:
+            return False
 
 class UserSchema(Schema):
     id = fields.Integer()
